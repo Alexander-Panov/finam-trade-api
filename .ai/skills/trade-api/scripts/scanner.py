@@ -24,9 +24,9 @@ def dprint(*args, **kwargs):
 
 
 def make_client() -> FinamClient:
-    api_key = os.environ.get("FINAM_API_KEY")
+    api_key = os.environ.get("TRADE_API_SECRET")
     if not api_key:
-        print("Error: FINAM_API_KEY environment variable is not set.", file=sys.stderr)
+        print("Error: TRADE_API_SECRET environment variable is not set.", file=sys.stderr)
         sys.exit(1)
     return FinamClient(secret=api_key)
 

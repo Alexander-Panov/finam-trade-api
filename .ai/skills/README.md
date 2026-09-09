@@ -48,12 +48,12 @@ In Cursor, open an Agent chat and run:
 
 After installation, configure two environment variables:
 
-- `FINAM_API_KEY` — API token from [api.finam.ru/docs/tokens](https://api.finam.ru/docs/tokens)
+- `TRADE_API_SECRET` — API token from [api.finam.ru/docs/tokens](https://api.finam.ru/docs/tokens)
 - `FINAM_ACCOUNT_ID` — account number from [lk.finam.ru](https://lk.finam.ru/) (digits only, without the `КлФ-` prefix)
 
 **Claude Code** — add to `.claude/settings.local.json`:
 ```json
-{ "env": { "FINAM_API_KEY": "...", "FINAM_ACCOUNT_ID": "..." } }
+{ "env": { "TRADE_API_SECRET": "...", "FINAM_ACCOUNT_ID": "..." } }
 ```
 
 **Qwen Code** — prompted automatically during installation, or set manually:

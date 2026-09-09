@@ -27,6 +27,3 @@ coverage.xml
 htmlcov/
 # Generated language bindings
 sdk/node/src/generated/
-
-# ai
-CLAUDE.md

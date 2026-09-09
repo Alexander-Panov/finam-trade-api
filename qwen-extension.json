@@ -5,9 +5,9 @@
   "skills": ".ai/skills",
   "settings": [
     {
-      "name": "Finam API Key",
+      "name": "Trade API Secret",
       "description": "API token from api.finam.ru/docs/tokens",
-      "envVar": "FINAM_API_KEY",
+      "envVar": "TRADE_API_SECRET",
       "sensitive": true
     },
     {

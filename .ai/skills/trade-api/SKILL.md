@@ -1,7 +1,7 @@
 ---
 name: trade-api
 description: "Use this skill for any work with Finam / Финам broker and Trade API: questions about the API, developing algorithmic trading strategies and scripts, and interacting with the broker programmatically. Trigger on: Finam/Финам mentions, api.finam.ru URLs, ticker@mic symbol format, finam-sdk. Also trigger for Russian-market trading workflows even without explicit Finam mention — portfolio analysis, scanning Moscow Exchange stocks (MISX/RTSX), volatility/momentum/arbitrage strategies, order placement and cancellation, real-time quotes via gRPC or WebSocket, OHLCV candles, backtesting on Russian equities, risk management for algo trading."
-metadata: '{"openclaw": {"emoji": "📈", "homepage": "https://api.finam.ru/", "requires": {"bins": ["curl", "jq", "python3"], "env": ["FINAM_API_KEY", "FINAM_ACCOUNT_ID"]}}}'
+metadata: '{"openclaw": {"emoji": "📈", "homepage": "https://api.finam.ru/", "requires": {"bins": ["curl", "jq", "python3"], "env": ["TRADE_API_SECRET", "FINAM_ACCOUNT_ID"]}}}'
 ---
 
 # Finam Trade API Skill
@@ -10,7 +10,7 @@ metadata: '{"openclaw": {"emoji": "📈", "homepage": "https://api.finam.ru/", "
 
 To execute Trade API requests, configure two credentials:
 
-- `FINAM_API_KEY` — API token. Get it at [api.finam.ru/docs/tokens](https://api.finam.ru/docs/tokens)
+- `TRADE_API_SECRET` — API token. Get it at [api.finam.ru/docs/tokens](https://api.finam.ru/docs/tokens)
 - `FINAM_ACCOUNT_ID` — your account number from [lk.finam.ru](https://lk.finam.ru/). Digits only, without the `КлФ-` prefix.
 
 You can use this skill without them — to design strategies, explore docs, or write scripts.
@@ -18,7 +18,7 @@ You can use this skill without them — to design strategies, explore docs, or w
 **Before sending any request, run this check via Bash tool:**
 
 ```shell
-[ ${#FINAM_API_KEY} -gt 0 ] && echo "✅ FINAM_API_KEY is set" || echo "❌ FINAM_API_KEY is not set"
+[ ${#TRADE_API_SECRET} -gt 0 ] && echo "✅ TRADE_API_SECRET is set" || echo "❌ TRADE_API_SECRET is not set"
 echo "FINAM_ACCOUNT_ID=${FINAM_ACCOUNT_ID:-❌ not set}"
 ```
 
@@ -28,13 +28,13 @@ If missing, set them in any of these ways:
 
 **Option 1 — export directly:**
 ```shell
-export FINAM_API_KEY="your_token"
+export TRADE_API_SECRET="your_token"
 export FINAM_ACCOUNT_ID="your_account_number"
 ```
 
 **Option 2 — `.env` file** (create it, fill in values, then load):
 ```
-FINAM_API_KEY=your_token_here
+TRADE_API_SECRET=your_token_here
 FINAM_ACCOUNT_ID=your_account_number_here
 ```
 Linux/macOS: `source .env` · Windows PowerShell:
@@ -48,7 +48,7 @@ Get-Content .env | ForEach-Object {
 
 **Option 3 — Claude Code** (`.claude/settings.local.json`):
 ```json
-{ "env": { "FINAM_API_KEY": "...", "FINAM_ACCOUNT_ID": "..." } }
+{ "env": { "TRADE_API_SECRET": "...", "FINAM_ACCOUNT_ID": "..." } }
 ```
 
 Using the API Key, obtain a **JWT token** — it expires after 15 minutes and does not persist between shell calls. Always fetch it inline before each request:
@@ -56,11 +56,11 @@ Using the API Key, obtain a **JWT token** — it expires after 15 minutes and do
 ```shell
 TOKEN=$(curl -sL "https://api.finam.ru/v1/sessions" \
   --header "Content-Type: application/json" \
-  --data '{"secret": "'"$FINAM_API_KEY"'"}' | jq -r '.token') && \
+  --data '{"secret": "'"$TRADE_API_SECRET"'"}' | jq -r '.token') && \
 curl -sL "https://api.finam.ru/v1/..." --header "Authorization: $TOKEN" | jq
 ```
 
-**Demo account:** Can be opened at the [tokens page](https://tradeapi.finam.ru/docs/tokens). Valid for 2 weeks; works identically to a real account.
+**Demo account:** Can be opened at the [tokens page](https://api.finam.ru/docs/tokens). Valid for 2 weeks; works identically to a real account.
 
 **Rate limits:** 200 requests/min per method.
 
@@ -86,7 +86,7 @@ View all supported exchanges with their MIC codes:
 ```shell
 TOKEN=$(curl -sL "https://api.finam.ru/v1/sessions" \
   --header "Content-Type: application/json" \
-  --data '{"secret": "'"$FINAM_API_KEY"'"}' | jq -r '.token')
+  --data '{"secret": "'"$TRADE_API_SECRET"'"}' | jq -r '.token')
 curl -sL "https://api.finam.ru/v1/exchanges" --header "Authorization: $TOKEN" | \
   jq -r '.exchanges[] | "\(.mic) - \(.name)"'
 ```
@@ -355,7 +355,7 @@ def get_growth(client, symbol, days):
 
 account_id = os.environ["FINAM_ACCOUNT_ID"]
 
-with FinamClient(secret=os.environ["FINAM_API_KEY"]) as client:
+with FinamClient(secret=os.environ["TRADE_API_SECRET"]) as client:
     for symbol in SYMBOLS:
         growth = get_growth(client, symbol, LOOKBACK_DAYS)
         if growth is None:
@@ -475,7 +475,7 @@ Fetch only the docs you actually need for the current task.
 
 Use the Finam SDK (`pip install finam-sdk`) for any Python scripts that interact with the API — both for one-off queries and streaming/trading bots. It handles JWT issuance and refresh automatically, provides typed exceptions, and exposes the full gRPC surface via a single `FinamClient` / `AsyncFinamClient` entry point.
 
-Full reference: fetch live from `https://raw.githubusercontent.com/FinamWeb/finam-trade-api/main/python/README.md` (source: https://github.com/FinamWeb/finam-trade-api/tree/main/python)
+Full reference: fetch live from `https://raw.githubusercontent.com/FinamWeb/finam-trade-api/main/sdk/python/README.md` (source: https://github.com/FinamWeb/finam-trade-api/tree/main/sdk/python)
 
 ### Authenticate and fetch account info
 
@@ -484,7 +484,7 @@ import os
 from finam_trade_api import FinamClient
 from finam_trade_api.accounts import GetAccountRequest
 
-with FinamClient(secret=os.environ["FINAM_API_KEY"]) as client:
+with FinamClient(secret=os.environ["TRADE_API_SECRET"]) as client:
     account = client.accounts.GetAccount(
         GetAccountRequest(account_id=os.environ["FINAM_ACCOUNT_ID"])
     )
@@ -501,7 +501,7 @@ from finam_trade_api.orders import (
     CancelOrderRequest, Order, OrderType, Side, TimeInForce,
 )
 
-with FinamClient(secret=os.environ["FINAM_API_KEY"]) as client:
+with FinamClient(secret=os.environ["TRADE_API_SECRET"]) as client:
     account_id = os.environ["FINAM_ACCOUNT_ID"]
 
     state = client.orders.PlaceOrder(Order(
@@ -530,7 +530,7 @@ from finam_trade_api import AsyncFinamClient
 from finam_trade_api.market_data import SubscribeQuoteRequest
 
 async def main(symbols: list[str]) -> None:
-    async with AsyncFinamClient(secret=os.environ["FINAM_API_KEY"]) as client:
+    async with AsyncFinamClient(secret=os.environ["TRADE_API_SECRET"]) as client:
         async for tick in client.market_data.SubscribeQuote(
             SubscribeQuoteRequest(symbols=symbols)
         ):
@@ -551,7 +551,7 @@ from finam_trade_api.market_data import SubscribeQuoteRequest
 async def stream_with_reconnect(symbols: list[str]) -> None:
     while True:
         try:
-            async with AsyncFinamClient(secret=os.environ["FINAM_API_KEY"]) as client:
+            async with AsyncFinamClient(secret=os.environ["TRADE_API_SECRET"]) as client:
                 async for tick in client.market_data.SubscribeQuote(
                     SubscribeQuoteRequest(symbols=symbols)
                 ):
@@ -564,7 +564,7 @@ async def stream_with_reconnect(symbols: list[str]) -> None:
 
 Ready-to-run strategy implementations built with the Finam SDK.
 
-**Index:** `https://raw.githubusercontent.com/FinamWeb/finam-trade-api/main/strategies/README.md`
+**Index:** `https://raw.githubusercontent.com/FinamWeb/finam-trade-api/main/examples/strategies/README.md`
 
 When the user asks about strategies or wants to copy one:
 
@@ -574,8 +574,8 @@ When the user asks about strategies or wants to copy one:
    - Ask which language (if multiple are available) and which target directory (default: `./<strategy_name>`).
    - Use the GitHub Contents API to list files — it returns filenames and download URLs. Fetch the top-level strategy directory first, then the language subdirectory:
      ```
-     https://api.github.com/repos/FinamWeb/finam-trade-api/contents/strategies/<name>
-     https://api.github.com/repos/FinamWeb/finam-trade-api/contents/strategies/<name>/<lang>
+     https://api.github.com/repos/FinamWeb/finam-trade-api/contents/examples/strategies/<name>
+     https://api.github.com/repos/FinamWeb/finam-trade-api/contents/examples/strategies/<name>/<lang>
      ```
    - Download all files in a single Bash call using the `download_url` values from the API response:
      ```bash
