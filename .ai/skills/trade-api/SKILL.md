@@ -76,9 +76,60 @@ echo "ACCOUNT_ID=${ACCOUNT_ID:-❌ could not resolve automatically}"
 
 **Demo account:** Can be opened at the [tokens page](https://api.finam.ru/docs/tokens). Valid for 2 weeks; works identically to a real account.
 
-**Rate limits:** 200 requests/min per method.
+**Rate limits:** 200 requests/min per method by default (some methods are lower) — see [Rate Limits](#rate-limits).
 
 **Maintenance window:** 05:00–06:15 MSK daily — API may be unavailable.
+
+## Rate Limits
+
+Quotas are counted **per method**, per user, in a 1-minute window. Defaults:
+
+| Method | Limit |
+| --- | --- |
+| Every method (including gRPC streams and `/v1/usage` itself) | 200 requests/min |
+| `ReportsService.createAccountReport` | 3 requests/min |
+
+Defaults can change and may be raised for a specific user — the live numbers come from `GET /v1/usage`, so check it rather than relying on this table when it matters.
+
+### Check current quotas
+
+```shell
+TOKEN=$(curl -sL "https://api.finam.ru/v1/sessions" \
+  --header "Content-Type: application/json" \
+  --data '{"secret": "'"$TRADE_API_SECRET"'"}' | jq -r '.token') && \
+curl -sL "https://api.finam.ru/v1/usage" --header "Authorization: $TOKEN" \
+  | jq -r '.quotas | sort_by(.name)[] | [.name, .limit, .remaining, (.reset_time // "-")] | @tsv' | column -t
+```
+
+Each entry in `quotas`:
+- `name` — `Service.method`, e.g. `MarketDataService.bars`, `OrdersService.placeOrder`
+- `limit` — quota size for the window (int64, serialized as a string in REST JSON)
+- `remaining` — requests left in the current window
+- 
+Python SDK: `client.metrics.GetUsageMetrics(GetUsageMetricsRequest())` (`from finam_trade_api.metrics import GetUsageMetricsRequest`).
+
+### Staying within limits
+
+- Exceeding a quota returns HTTP `429` / gRPC `RESOURCE_EXHAUSTED` (`RateLimitError` in the SDK). Don't retry in a tight loop — wait until `reset_time` for that method. The SDK does not auto-retry 429 unless the server sends a retry pushback.
+- Scripts that loop over many symbols (scanners, bulk bar downloads) hit `MarketDataService.bars` hardest: throttle to under 200 calls/min (e.g. `time.sleep(0.3)` between calls) or check `remaining` before a large batch.
+- For live data, prefer a gRPC subscription (`subscribeQuote`, `subscribeOrderBook`, …) over polling `lastQuote` / `orderBook` — opening a stream is one call that keeps delivering updates, while every poll spends quota.
+
+### Raising limits
+
+Limits can't be changed through the API. If the user needs more (e.g. a bot regularly hits 429), point them to the request form: open [api.finam.ru/docs/rest/#introduction](https://api.finam.ru/docs/rest/#introduction), click **«Увеличить лимиты API»** and fill in the form. The user submits it themselves — don't fill it in on their behalf.
+
+Raised limits are bound to an application ID, not to the secret alone. The ID (`source_app_id`) is issued to the user once the request is approved — the user can't make one up, so if they don't have it yet, the request is still pending. Every token request must carry `source_app_id`, otherwise the session gets the default quotas. Keep the ID in an env var (e.g. `SOURCE_APP_ID`) and pass it when exchanging the secret for a JWT:
+
+```shell
+TOKEN=$(curl -sL "https://api.finam.ru/v1/sessions" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg s "$TRADE_API_SECRET" --arg a "$SOURCE_APP_ID" '{secret: $s, source_app_id: $a}')" \
+  | jq -r '.token')
+```
+
+The same field exists on gRPC `AuthRequest` and `SubscribeJwtRenewalRequest`. `FinamClient` / `AsyncFinamClient` currently send only `secret`, so a script that needs the raised limits must obtain the token via REST (as above) or call `AuthService.Auth` itself with `source_app_id` set.
+
+After approval, fetch a token with `source_app_id` and verify the new numbers with `GET /v1/usage`.
 
 ## Market assets
 
